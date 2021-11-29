@@ -4,6 +4,7 @@ import multiprocessing
 import random
 import copy
 import sys
+from Stack import Stack
 import tkinter
 import threading
 from functools import reduce
@@ -34,6 +35,8 @@ capacity                    路径容量
 way_selection               1--Pure_Base_Num  2--Extended_Base_Num
 default_speed               默认速度
 initial_pheromone           初始信息素浓度
+unsafe_city                 撤离起点
+safe_city                   撤离终点
 '''
 ant_num = 100
 default_base_num = 5
@@ -41,6 +44,8 @@ capacity = 100
 way_selection = 1
 default_speed = 10
 initial_pheromone = 0.0
+unsafe_city = [0, 1, 2, 3, 4]
+safe_city = [12, 13, 14, 15]
 
 distance_x = [
     85, 264, 107, 354, 258, 135, 443, 250, 123, 147, 363, 456, 424, 369, 345, 221]
@@ -52,6 +57,7 @@ distance_graph = [[0.0 for col_d in range(city_num)] for raw_d in range(city_num
 pheromone_graph = [[0.0 for col_p in range(city_num)] for raw_P in range(city_num)]
 density_graph = [[0.0 for col_de in range(city_num)] for raw_de in range(city_num)]
 all_distance = 0
+all_nodes = 0
 ants = []
 path_x_y = [
     [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -89,6 +95,12 @@ capacity_graph = [
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # 15
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 ]
+
+
+def __cal_density():
+    for i in range(city_num):
+        for j in range(city_num):
+            density_graph[i][j] = (capacity - capacity_graph[i][j]) / (distance_graph[i][j])
 
 
 # ------------ 蚂蚁 ------------
@@ -250,16 +262,14 @@ class Ant(object):
         self.__cal_total_distance()
 
 
-def __cal_density():
-    for i in range(city_num):
-        for j in range(city_num):
-            density_graph[i][j] = (capacity - capacity_graph[i][j]) / (distance_graph[i][j])
-
-
 class TSP(object):
 
     def __init__(self):
+        pass
+
+    def new(self):
         # 计算城市之间的距离
+        global all_distance, all_nodes, initial_pheromone
         for i in range(city_num):
             for j in range(city_num):
                 temp_distance = pow((distance_x[i] - distance_x[j]), 2) + pow((distance_y[i] - distance_y[j]), 2)
@@ -267,10 +277,22 @@ class TSP(object):
                 distance_graph[i][j] = float(int(temp_distance + 0.5))
 
         # 初始化信息素浓度
-        for i in range(city_num):
-            for j in range(city_num):
-                if path_x_y[i][j] == 1:
-                    pass
+        returning = []
+        for origin in unsafe_city:
+            for goal in safe_city:
+                edge = Stack(city_num, path_x_y)
+                edge.push(origin)
+                edge.dfsStack(-1, goal)
+                returning.append(edge.all_path)
+        all_path = returning[0]
+        for path in all_path:
+            temp_all = len(path)
+            i = 1
+            while i < temp_all:
+                all_distance = all_distance + distance_graph[path[i - 1]][path[i]]
+                i = i + 1
+            all_nodes = all_nodes + len(path)
+        initial_pheromone = 1 / (all_nodes * all_distance)
 
 
 if __name__ == '__main__':
